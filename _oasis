@@ -15,7 +15,7 @@ Library mirage
   BuildDepends:       ipaddr,unix,dynlink,lwt,mirage-types,mirage-types.lwt
 
 Executable mirage
-  CompiledObject:     best
+  CompiledObject:     byte
   Path:               lib
   MainIs:             main.ml
   Install:            true
