@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: faddbf53eff71e4790cbe626b35876bb)
+# DO NOT EDIT (digest: 4d7d31177aece7cbfb7e7bcd78d58405)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -16,14 +16,14 @@
 # Library mirage
 "lib/mirage.cmxs": use_mirage
 # Executable mirage
-<lib/main.{native,byte}>: pkg_cmdliner
-<lib/main.{native,byte}>: pkg_dynlink
-<lib/main.{native,byte}>: pkg_ipaddr
-<lib/main.{native,byte}>: pkg_lwt
-<lib/main.{native,byte}>: pkg_mirage-types
-<lib/main.{native,byte}>: pkg_mirage-types.lwt
-<lib/main.{native,byte}>: pkg_unix
-<lib/main.{native,byte}>: use_mirage
+"lib/main.byte": pkg_cmdliner
+"lib/main.byte": pkg_dynlink
+"lib/main.byte": pkg_ipaddr
+"lib/main.byte": pkg_lwt
+"lib/main.byte": pkg_mirage-types
+"lib/main.byte": pkg_mirage-types.lwt
+"lib/main.byte": pkg_unix
+"lib/main.byte": use_mirage
 <lib/*.ml{,i}>: pkg_cmdliner
 <lib/*.ml{,i}>: pkg_dynlink
 <lib/*.ml{,i}>: pkg_ipaddr
