@@ -352,6 +352,7 @@ val load: string option -> t
 type mode = [
   | `Unix
   | `Xen
+  | `Kfreebsd
 ]
 (** Configuration mode. *)
 

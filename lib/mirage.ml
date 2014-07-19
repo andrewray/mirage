@@ -47,9 +47,10 @@ let set_main_ml file =
 type mode = [
   | `Unix
   | `Xen
+  | `Kfreebsd
 ]
 
-let mode = ref `Unix
+let mode : mode ref = ref `Unix
 
 let set_mode m =
   mode := m
@@ -318,6 +319,7 @@ module Io_page = struct
     match !mode with
     | `Xen  -> ["io-page"]
     | `Unix -> ["io-page"; "io-page.unix"]
+    | `Kfreebsd -> []
 
   let configure () = ()
 
@@ -377,11 +379,11 @@ module Clock = struct
   let module_name () =
     "Clock"
 
-  let packages () = [
+  let packages () = 
     match !mode with
-    | `Unix -> "mirage-clock-unix"
-    | `Xen  -> "mirage-clock-xen"
-  ]
+    | `Unix -> [ "mirage-clock-unix" ]
+    | `Xen  -> [ "mirage-clock-xen" ]
+    | `Kfreebsd -> []
 
   let libraries () = packages ()
 
@@ -442,11 +444,13 @@ module Entropy = struct
     match !mode with
     | `Unix -> "Entropy_unix.Make (OS.Time)"
     | `Xen  -> "Entropy_xen"
+    | `Kfreebsd -> failwith "Entropy kfreebsd"
 
   let packages () =
     match !mode with
     | `Unix -> [ "mirage-entropy-unix" ]
     | `Xen  -> [ "mirage-entropy-xen" ]
+    | `Kfreebsd -> []
 
   let libraries = packages
 
@@ -480,11 +484,11 @@ module Console = struct
   let module_name t =
     "Console"
 
-  let packages _ = [
+  let packages _ = 
     match !mode with
-    | `Unix -> "mirage-console-unix"
-    | `Xen  -> "mirage-console-xen"
-  ]
+    | `Unix -> [ "mirage-console-unix" ]
+    | `Xen  -> [ "mirage-console-xen" ]
+    | `Kfreebsd -> []
 
   let libraries t = packages t
 
@@ -581,23 +585,28 @@ module Direct_kv_ro = struct
     match !mode with
     | `Xen  -> Crunch.module_name t
     | `Unix -> "Kvro_fs_unix"
+    | `Kfreebsd -> failwith "Direct_kv_to kfreebsd"
 
   let packages t =
     match !mode with
     | `Xen  -> Crunch.packages t
     | `Unix -> "mirage-fs-unix" :: Crunch.packages t
+    | `Kfreebsd -> failwith "Direct_kv_to kfreebsd"
 
   let libraries t =
     match !mode with
     | `Xen  -> Crunch.libraries t
     | `Unix -> "mirage-fs-unix" :: Crunch.libraries t
+    | `Kfreebsd -> failwith "Direct_kv_to kfreebsd"
 
   let configure t =
     match !mode with
     | `Xen  -> Crunch.configure t
-    | `Unix ->
+    | `Unix -> begin
       append_main "let %s () =" (name t);
       append_main "  Kvro_fs_unix.connect %S" t
+    end
+    | `Kfreebsd -> failwith "Direct_kv_to kfreebsd"
 
 end
 
@@ -614,17 +623,17 @@ module Block = struct
   let module_name _ =
     "Block"
 
-  let packages _ = [
+  let packages _ = 
     match !mode with
-    | `Unix -> "mirage-block-unix"
-    | `Xen  -> "mirage-block-xen"
-  ]
+    | `Unix -> [ "mirage-block-unix" ]
+    | `Xen  -> [ "mirage-block-xen" ]
+    | `Kfreebsd -> []
 
-  let libraries _ = [
+  let libraries _ = 
     match !mode with
-    | `Unix -> "mirage-block-unix"
-    | `Xen  -> "mirage-block-xen.front"
-  ]
+    | `Unix -> [ "mirage-block-unix" ]
+    | `Xen  -> [ "mirage-block-xen.front" ]
+    | `Kfreebsd -> []
 
   let configure t =
     append_main "let %s () =" (name t);
@@ -810,6 +819,7 @@ module Network = struct
     match !mode with
     | `Unix -> ["mirage-net-unix"]
     | `Xen  -> ["mirage-net-xen"]
+    | `Kfreebsd -> []
 
   let libraries t =
     packages t
@@ -857,6 +867,7 @@ module Ethif = struct
     match !mode with
     | `Unix -> [ "tcpip.ethif-unix" ]
     | `Xen  -> [ "tcpip.ethif" ]
+    | `Kfreebsd -> []
 
   let configure t =
     let name = name t in
@@ -920,7 +931,8 @@ module IPV4 = struct
   let libraries t  =
     (match !mode with
      | `Unix -> [ "tcpip.ipv4-unix" ]
-     | `Xen  -> [ "tcpip.ipv4" ])
+     | `Xen  -> [ "tcpip.ipv4" ]
+     | `Kfreebsd -> [])
     @ Impl.libraries t.ethernet
 
   let configure t =
@@ -1029,6 +1041,7 @@ module UDPV4_socket = struct
     match !mode with
     | `Unix -> [ "tcpip.udpv4-socket" ]
     | `Xen  -> failwith "No socket implementation available for Xen"
+    | `Kfreebsd -> failwith "UDPV4_socket kfreebsd"
 
   let configure t =
     append_main "let %s () =" (name t);
@@ -1139,6 +1152,7 @@ module TCPV4_socket = struct
     match !mode with
     | `Unix -> [ "tcpip.tcpv4-socket" ]
     | `Xen  -> failwith "No socket implementation available for Xen"
+    | `Kfreebsd -> failwith "TCPV4_socket kfreebsd"
 
   let configure t =
     append_main "let %s () =" (name t);
@@ -1571,7 +1585,9 @@ let add_to_opam_packages p =
 let packages t =
   let m = match !mode with
     | `Unix -> "mirage-unix"
-    | `Xen  -> "mirage-xen" in
+    | `Xen  -> "mirage-xen" 
+    | `Kfreebsd -> "mirage-kfreebsd"
+  in
   let ps = List.fold_left (fun set j ->
       let ps = StringSet.of_list (Impl.packages j) in
       StringSet.union ps set
@@ -1586,7 +1602,9 @@ let add_to_ocamlfind_libraries l =
 let libraries t =
   let m = match !mode with
     | `Unix -> "mirage-types.lwt"
-    | `Xen  -> "mirage-types.lwt" in
+    | `Xen  -> "mirage-types.lwt" 
+    | `Kfreebsd  -> "mirage-types.lwt" 
+  in
   let ls = List.fold_left (fun set j ->
       let ls = StringSet.of_list (Impl.libraries j) in
       StringSet.union ls set
@@ -1719,6 +1737,8 @@ let configure_makefile t =
       append oc "FLAGS  = -cflag -g -lflags -g,-linkpkg,-dontlink,unix\n"
     | `Unix ->
       append oc "FLAGS  = -cflag -g -lflags -g,-linkpkg\n"
+    | `Kfreebsd ->
+      failwith "kfreebsd FLAGS"
   end;
   append oc "BUILD  = ocamlbuild -classic-display -use-ocamlfind $(LIBS) $(SYNTAX) $(FLAGS)\n\
              OPAM   = opam\n\n\
@@ -1776,6 +1796,8 @@ let configure_makefile t =
     | `Unix ->
       append oc "build: main.native";
       append oc "\tln -nfs _build/main.native mir-%s" t.name;
+    | `Kfreebsd ->
+      failwith "kfreebsd makefile"
   end;
   newline oc;
   append oc "run: build";
@@ -1785,6 +1807,8 @@ let configure_makefile t =
       append oc "\t@echo Then do something similar to: xl create -c %s.xl\n" t.name
     | `Unix ->
       append oc "\t$(SUDO) ./mir-%s\n" t.name
+    | `Kfreebsd ->
+      failwith "kfreebsd build"
   end;
   append oc "clean:\n\
              \tocamlbuild -clean";
@@ -1904,8 +1928,9 @@ let compile_and_dynlink file =
   info "%s %s" (blue_s "Processing:") file;
   let root = Filename.dirname file in
   let file = Filename.basename file in
-  let file = Dynlink.adapt_filename file in
-  command "rm -rf %s/_build/%s.*" root (Filename.chop_extension file);
+  let chop = Filename.chop_extension file in
+  let file = Dynlink.adapt_filename (chop ^ ".cmo") in
+  command "rm -rf %s/_build/%s.*" root chop;
   command "cd %s && ocamlbuild -use-ocamlfind -tags annot,bin_annot -pkg mirage %s" root file;
   try Dynlink.loadfile (String.concat "/" [root; "_build"; file])
   with Dynlink.Error err -> error "Error loading config: %s" (Dynlink.error_message err)

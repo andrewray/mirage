@@ -41,12 +41,15 @@ let xen =
   mk_flag ["xen"] "Generate a Xen unikernel. Do not use in conjunction with --unix-*."
 let unix =
   mk_flag ["unix"] "Use unix-direct backend. Do not use in conjunction with --xen."
+let kfreebsd =
+  mk_flag ["kfreebsd"] "Use kfreebsd backend."
 (* Select the operating mode from command line flags *)
-let mode unix xen =
-  match xen,unix with
-  | true , true  -> failwith "Cannot specify --unix and --xen together."
-  | true , false -> `Xen
-  | false, _     -> `Unix
+let mode unix xen kfreebsd =
+  match xen,unix,kfreebsd with
+  | true, false, false -> `Xen
+  | false, true, false -> `Unix
+  | false, false, true -> `Kfreebsd
+  | _ -> failwith "Specify only one of --unix, --xen or --kfreebsd."
 
 let file =
   let doc = Arg.info ~docv:"FILE"
@@ -64,14 +67,14 @@ let configure =
     `S "DESCRIPTION";
     `P "The $(b,configure) command initializes a fresh Mirage application."
   ] in
-  let configure unix xen no_opam file =
+  let configure unix xen kfreebsd no_opam file =
     if unix && xen then `Help (`Pager, Some "configure")
     else (
       Mirage.manage_opam_packages (not no_opam);
-      Mirage.set_mode (mode unix xen);
+      Mirage.set_mode (mode unix xen kfreebsd);
       let t = Mirage.load file in
       `Ok (Mirage.configure t)) in
-  Term.(ret (pure configure $ unix $ xen $ no_opam $ file)),
+  Term.(ret (pure configure $ unix $ xen $ kfreebsd $ no_opam $ file)),
   term_info "configure" ~doc ~man
 
 (* BUILD *)
